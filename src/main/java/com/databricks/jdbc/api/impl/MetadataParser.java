@@ -1,16 +1,12 @@
 package com.databricks.jdbc.api.impl;
 
 import com.databricks.jdbc.exception.DatabricksDriverException;
-import com.databricks.jdbc.log.JdbcLogger;
-import com.databricks.jdbc.log.JdbcLoggerFactory;
 import com.databricks.jdbc.model.telemetry.enums.DatabricksDriverErrorCode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Utility class for parsing metadata descriptions into structured type mappings. */
 public class MetadataParser {
-
-  private static final JdbcLogger LOGGER = JdbcLoggerFactory.getLogger(MetadataParser.class);
 
   /**
    * Parses STRUCT metadata to extract field types.

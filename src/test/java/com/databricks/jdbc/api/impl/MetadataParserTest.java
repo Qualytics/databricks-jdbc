@@ -349,4 +349,63 @@ public class MetadataParserTest {
         actual,
         "Parsed struct metadata with nested STRUCT containing DECIMAL should preserve all type information.");
   }
+
+  /** Test parsing of deeply nested STRUCT with multiple DECIMAL fields at different levels. */
+  @Test
+  @DisplayName("parseStructMetadata with deeply nested STRUCT and DECIMAL fields")
+  public void testParseStructMetadata_DeeplyNestedStructWithDecimals() {
+    String metadata =
+        "STRUCT<id:INT, account:STRUCT<balance:DECIMAL(18,4), details:STRUCT<fee:DECIMAL(5,2), rate:DECIMAL(10,6)>>, status:STRING>";
+    Map<String, String> expected = new LinkedHashMap<>();
+    expected.put("id", "INT");
+    expected.put(
+        "account",
+        "STRUCT<balance:DECIMAL(18,4), details:STRUCT<fee:DECIMAL(5,2), rate:DECIMAL(10,6)>>");
+    expected.put("status", "STRING");
+
+    Map<String, String> actual = MetadataParser.parseStructMetadata(metadata);
+    assertEquals(
+        expected,
+        actual,
+        "Parsed struct metadata with deeply nested STRUCT and DECIMAL fields should handle all levels correctly.");
+  }
+
+  /** Test parsing of STRUCT with mixed complex types and DECIMAL fields. */
+  @Test
+  @DisplayName("parseStructMetadata with mixed complex types and DECIMAL")
+  public void testParseStructMetadata_MixedComplexTypesWithDecimal() {
+    String metadata =
+        "STRUCT<id:INT, prices:ARRAY<DECIMAL(12,2)>, accounts:MAP<STRING, STRUCT<balance:DECIMAL(15,2)>>, summary:STRUCT<total:DECIMAL(20,4), count:INT>>";
+    Map<String, String> expected = new LinkedHashMap<>();
+    expected.put("id", "INT");
+    expected.put("prices", "ARRAY<DECIMAL(12,2)>");
+    expected.put("accounts", "MAP<STRING, STRUCT<balance:DECIMAL(15,2)>>");
+    expected.put("summary", "STRUCT<total:DECIMAL(20,4), count:INT>");
+
+    Map<String, String> actual = MetadataParser.parseStructMetadata(metadata);
+    assertEquals(
+        expected,
+        actual,
+        "Parsed struct metadata with mixed complex types and DECIMAL fields should handle all combinations correctly.");
+  }
+
+  /** Test parsing of STRUCT with other parenthesized types to ensure fix applies broadly. */
+  @Test
+  @DisplayName("parseStructMetadata with various parenthesized types")
+  public void testParseStructMetadata_VariousParenthesizedTypes() {
+    String metadata =
+        "STRUCT<id:INT, name:STRING, amount:DECIMAL(38,18), price:DECIMAL(10,2), active:BOOLEAN>";
+    Map<String, String> expected = new LinkedHashMap<>();
+    expected.put("id", "INT");
+    expected.put("name", "STRING");
+    expected.put("amount", "DECIMAL(38,18)");
+    expected.put("price", "DECIMAL(10,2)");
+    expected.put("active", "BOOLEAN");
+
+    Map<String, String> actual = MetadataParser.parseStructMetadata(metadata);
+    assertEquals(
+        expected,
+        actual,
+        "Parsed struct metadata with various parenthesized types should handle all type parameters correctly.");
+  }
 }

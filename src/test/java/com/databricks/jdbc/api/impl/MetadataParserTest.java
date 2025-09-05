@@ -292,4 +292,61 @@ public class MetadataParserTest {
         exception.getMessage().contains("Invalid MAP metadata"),
         "Exception message should indicate invalid MAP metadata.");
   }
+
+  /**
+   * Test parsing of STRUCT metadata with DECIMAL precision and scale - regression test for
+   * parentheses handling.
+   */
+  @Test
+  @DisplayName("parseStructMetadata with DECIMAL precision and scale")
+  public void testParseStructMetadata_WithDecimalPrecisionScale() {
+    String metadata = "STRUCT<name:STRING, amount:DECIMAL(18,2)>";
+    Map<String, String> expected = new LinkedHashMap<>();
+    expected.put("name", "STRING");
+    expected.put("amount", "DECIMAL(18,2)");
+
+    Map<String, String> actual = MetadataParser.parseStructMetadata(metadata);
+    assertEquals(
+        expected,
+        actual,
+        "Parsed struct metadata with DECIMAL precision and scale should handle parentheses correctly.");
+  }
+
+  /**
+   * Test parsing of STRUCT metadata with multiple DECIMAL fields with different precision/scale.
+   */
+  @Test
+  @DisplayName("parseStructMetadata with multiple DECIMAL fields")
+  public void testParseStructMetadata_MultipleDecimalFields() {
+    String metadata = "STRUCT<id:INT, price:DECIMAL(10,2), amount:DECIMAL(18,4), name:STRING>";
+    Map<String, String> expected = new LinkedHashMap<>();
+    expected.put("id", "INT");
+    expected.put("price", "DECIMAL(10,2)");
+    expected.put("amount", "DECIMAL(18,4)");
+    expected.put("name", "STRING");
+
+    Map<String, String> actual = MetadataParser.parseStructMetadata(metadata);
+    assertEquals(
+        expected,
+        actual,
+        "Parsed struct metadata with multiple DECIMAL fields should handle all parentheses correctly.");
+  }
+
+  /** Test parsing of complex nested STRUCT with DECIMAL fields - comprehensive regression test. */
+  @Test
+  @DisplayName("parseStructMetadata with nested STRUCT containing DECIMAL")
+  public void testParseStructMetadata_NestedStructWithDecimal() {
+    String metadata =
+        "STRUCT<id:INT, financial:STRUCT<balance:DECIMAL(15,2), credit:DECIMAL(10,2)>, active:BOOLEAN>";
+    Map<String, String> expected = new LinkedHashMap<>();
+    expected.put("id", "INT");
+    expected.put("financial", "STRUCT<balance:DECIMAL(15,2), credit:DECIMAL(10,2)>");
+    expected.put("active", "BOOLEAN");
+
+    Map<String, String> actual = MetadataParser.parseStructMetadata(metadata);
+    assertEquals(
+        expected,
+        actual,
+        "Parsed struct metadata with nested STRUCT containing DECIMAL should preserve all type information.");
+  }
 }

@@ -1,12 +1,16 @@
 package com.databricks.jdbc.api.impl;
 
 import com.databricks.jdbc.exception.DatabricksDriverException;
+import com.databricks.jdbc.log.JdbcLogger;
+import com.databricks.jdbc.log.JdbcLoggerFactory;
 import com.databricks.jdbc.model.telemetry.enums.DatabricksDriverErrorCode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Utility class for parsing metadata descriptions into structured type mappings. */
 public class MetadataParser {
+
+  private static final JdbcLogger LOGGER = JdbcLoggerFactory.getLogger(MetadataParser.class);
 
   /**
    * Parses STRUCT metadata to extract field types.
@@ -94,25 +98,33 @@ public class MetadataParser {
    * @return an array of field definitions in the STRUCT
    */
   private static String[] splitFields(String metadata) {
-    int depth = 0;
+    int angleBracketDepth = 0;
+    int parenDepth = 0;
     StringBuilder currentField = new StringBuilder();
     java.util.List<String> fields = new java.util.ArrayList<>();
 
     for (char ch : metadata.toCharArray()) {
       if (ch == '<') {
-        depth++;
+        angleBracketDepth++;
       } else if (ch == '>') {
-        depth--;
+        angleBracketDepth--;
+      } else if (ch == '(') {
+        parenDepth++;
+      } else if (ch == ')') {
+        parenDepth--;
       }
 
-      if (ch == ',' && depth == 0) {
-        fields.add(currentField.toString().trim());
+      // Only split on commas when we're at the top level (both depths are 0)
+      if (ch == ',' && angleBracketDepth == 0 && parenDepth == 0) {
+        String field = currentField.toString().trim();
+        fields.add(field);
         currentField.setLength(0);
       } else {
         currentField.append(ch);
       }
     }
-    fields.add(currentField.toString().trim());
+    String finalField = currentField.toString().trim();
+    fields.add(finalField);
     return fields.toArray(new String[0]);
   }
 

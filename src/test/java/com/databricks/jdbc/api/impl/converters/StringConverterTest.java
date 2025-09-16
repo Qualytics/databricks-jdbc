@@ -3,12 +3,18 @@ package com.databricks.jdbc.api.impl.converters;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.databricks.jdbc.api.impl.DatabricksArray;
+import com.databricks.jdbc.api.impl.DatabricksMap;
+import com.databricks.jdbc.api.impl.DatabricksStruct;
 import com.databricks.jdbc.exception.DatabricksSQLException;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 public class StringConverterTest {
@@ -154,6 +160,38 @@ public class StringConverterTest {
     assertEquals(new StringConverter().toString(NUMERICAL_STRING), "10");
     assertEquals(new StringConverter().toString(NUMBERICAL_ZERO_STRING), "0");
     assertEquals(new StringConverter().toString(CHARACTER_STRING), "ABC");
+  }
+
+  @Test
+  public void testConvertToStringWithComplexTypes() throws DatabricksSQLException {
+    DatabricksArray stringArray = new DatabricksArray(List.of("one", "two"), "ARRAY<STRING>");
+    assertEquals("[\"one\",\"two\"]", new StringConverter().toString(stringArray));
+
+    Map<String, Object> mapValues = new LinkedHashMap<>();
+    mapValues.put("alpha", "beta");
+    DatabricksMap<String, Object> databricksMap =
+        new DatabricksMap<>(mapValues, "MAP<STRING,STRING>");
+    assertEquals("{\"alpha\":\"beta\"}", new StringConverter().toString(databricksMap));
+
+    Map<String, Object> structValues = new LinkedHashMap<>();
+    structValues.put("name", "value");
+    structValues.put("score", 5);
+    DatabricksStruct databricksStruct =
+        new DatabricksStruct(structValues, "STRUCT<name:STRING,score:INT>");
+    assertEquals(
+        "{\"name\":\"value\",\"score\":5}", new StringConverter().toString(databricksStruct));
+  }
+
+  @Test
+  public void testConvertToStringFallback() throws DatabricksSQLException {
+    class CustomType {
+      @Override
+      public String toString() {
+        return "custom-string";
+      }
+    }
+
+    assertEquals("custom-string", new StringConverter().toString(new CustomType()));
   }
 
   @Test

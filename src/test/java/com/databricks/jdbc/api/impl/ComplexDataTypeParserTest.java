@@ -131,6 +131,24 @@ public class ComplexDataTypeParserTest {
   }
 
   @Test
+  void testComplexPrimitiveTimestampWithOffset() throws DatabricksParsingException {
+    String json = "{\"ts\":\"2025-03-18T12:08:31.552223-07:00\"}";
+
+    DatabricksStruct dbStruct = parser.parseJsonStringToDbStruct(json, "STRUCT<ts:TIMESTAMP>");
+    assertNotNull(dbStruct);
+
+    try {
+      Object[] attrs = dbStruct.getAttributes();
+      assertEquals(1, attrs.length);
+      Timestamp ts = (Timestamp) attrs[0];
+      assertNotNull(ts);
+      assertEquals(1742324911552L, ts.toInstant().toEpochMilli());
+    } catch (Exception e) {
+      fail("Should not throw: " + e.getMessage());
+    }
+  }
+
+  @Test
   void testFormatComplexTypeString_withMapType() {
     String jsonString = "[{\"key\":1,\"value\":2},{\"key\":3,\"value\":4}]";
     String expected = "{1:2,3:4}";

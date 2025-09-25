@@ -223,36 +223,47 @@ public class ComplexDataTypeParser {
     if (text == null || text.isEmpty()) {
       return null;
     }
-    String normalized = text.replace('T', ' ');
+
+    // First, try standard Timestamp.valueOf() parsing
     try {
-      return Timestamp.valueOf(normalized);
+      return Timestamp.valueOf(text);
     } catch (IllegalArgumentException e) {
-      // Try ISO offset date-time formats with timezone information
+      // If that fails, try with T replaced by space
+      String normalized = text.replace('T', ' ');
+      try {
+        return Timestamp.valueOf(normalized);
+      } catch (IllegalArgumentException e2) {
+        // If standard parsing fails, use custom parser for complex formats
+        return parseTimestampWithCustomParser(text, normalized, raw);
+      }
+    }
+  }
+
+  private Timestamp parseTimestampWithCustomParser(String text, String normalized, String raw) {
+    // Try ISO offset date-time formats with timezone information
+    try {
+      OffsetDateTime offsetDateTime =
+          OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+      Instant instant = offsetDateTime.toInstant();
+      return Timestamp.from(instant);
+    } catch (DateTimeParseException e1) {
       try {
         OffsetDateTime offsetDateTime =
-            OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            OffsetDateTime.parse(normalized, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         Instant instant = offsetDateTime.toInstant();
         return Timestamp.from(instant);
-      } catch (DateTimeParseException ignored) {
+      } catch (DateTimeParseException e2) {
         try {
-          OffsetDateTime offsetDateTime =
-              OffsetDateTime.parse(normalized, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-          Instant instant = offsetDateTime.toInstant();
-          return Timestamp.from(instant);
-        } catch (DateTimeParseException ignoredAgain) {
+          LocalDateTime localDateTime =
+              LocalDateTime.parse(text, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+          return Timestamp.valueOf(localDateTime);
+        } catch (DateTimeParseException e3) {
           try {
             LocalDateTime localDateTime =
-                LocalDateTime.parse(text, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             return Timestamp.valueOf(localDateTime);
-          } catch (DateTimeParseException ignoredYetAgain) {
-            try {
-              LocalDateTime localDateTime =
-                  LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-              return Timestamp.valueOf(localDateTime);
-            } catch (DateTimeParseException finalException) {
-              throw new IllegalArgumentException(
-                  "Invalid timestamp format: " + raw, finalException);
-            }
+          } catch (DateTimeParseException e4) {
+            throw new IllegalArgumentException("Invalid timestamp format: " + raw, e4);
           }
         }
       }

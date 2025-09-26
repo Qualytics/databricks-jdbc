@@ -1,8 +1,11 @@
 package com.databricks.jdbc.api.impl;
 
+import com.databricks.jdbc.api.impl.converters.TimestampConverter;
 import com.databricks.jdbc.common.util.DatabricksTypeUtil;
 import com.databricks.jdbc.common.util.JsonUtil;
+import com.databricks.jdbc.common.util.WildcardUtil;
 import com.databricks.jdbc.exception.DatabricksParsingException;
+import com.databricks.jdbc.exception.DatabricksSQLException;
 import com.databricks.jdbc.log.JdbcLogger;
 import com.databricks.jdbc.log.JdbcLoggerFactory;
 import com.databricks.jdbc.model.telemetry.enums.DatabricksDriverErrorCode;
@@ -12,10 +15,7 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -26,6 +26,7 @@ import java.util.Map;
 public class ComplexDataTypeParser {
 
   private static final JdbcLogger LOGGER = JdbcLoggerFactory.getLogger(ComplexDataTypeParser.class);
+  private static final TimestampConverter TIMESTAMP_CONVERTER = new TimestampConverter();
 
   public DatabricksArray parseJsonStringToDbArray(String json, String arrayMetadata)
       throws DatabricksParsingException {
@@ -218,66 +219,29 @@ public class ComplexDataTypeParser {
     }
   }
 
-  private Timestamp parseTimestamp(String raw) {
-    String text = stripQuotes(raw);
-    if (text == null || text.isEmpty()) {
+  private Timestamp parseTimestamp(String text) {
+    if (WildcardUtil.isNullOrEmpty(text)) {
       return null;
     }
 
-    // First, try standard Timestamp.valueOf() parsing
-    try {
-      return Timestamp.valueOf(text);
-    } catch (IllegalArgumentException e) {
-      // If that fails, try with T replaced by space
-      String normalized = text.replace('T', ' ');
+    // Check if timestamp has timezone offset - maintain backward compatibility
+    // by preserving the UTC instant for offset timestamps
+    if (text.matches(".*T.*([+\\-]\\d\\d:\\d\\d)$")) {
       try {
-        return Timestamp.valueOf(normalized);
-      } catch (IllegalArgumentException e2) {
-        // If standard parsing fails, use custom parser for complex formats
-        return parseTimestampWithCustomParser(text, normalized, raw);
+        OffsetDateTime offsetDateTime = OffsetDateTime.parse(text);
+        return Timestamp.from(offsetDateTime.toInstant());
+      } catch (DateTimeParseException e) {
+        // Fall through to TimestampConverter for other formats
       }
     }
-  }
 
-  private Timestamp parseTimestampWithCustomParser(String text, String normalized, String raw) {
-    // Try ISO offset date-time formats with timezone information
     try {
-      OffsetDateTime offsetDateTime =
-          OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-      Instant instant = offsetDateTime.toInstant();
-      return Timestamp.from(instant);
-    } catch (DateTimeParseException e1) {
-      try {
-        OffsetDateTime offsetDateTime =
-            OffsetDateTime.parse(normalized, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        Instant instant = offsetDateTime.toInstant();
-        return Timestamp.from(instant);
-      } catch (DateTimeParseException e2) {
-        try {
-          LocalDateTime localDateTime =
-              LocalDateTime.parse(text, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-          return Timestamp.valueOf(localDateTime);
-        } catch (DateTimeParseException e3) {
-          try {
-            LocalDateTime localDateTime =
-                LocalDateTime.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            return Timestamp.valueOf(localDateTime);
-          } catch (DateTimeParseException e4) {
-            throw new IllegalArgumentException("Invalid timestamp format: " + raw, e4);
-          }
-        }
-      }
+      // Delegate to TimestampConverter for non-offset timestamps and fallback cases
+      return TIMESTAMP_CONVERTER.toTimestamp(text);
+    } catch (DatabricksSQLException e) {
+      // Convert to IllegalArgumentException to maintain existing API contract
+      throw new IllegalArgumentException("Invalid timestamp format: " + text, e);
     }
-  }
-
-  private String stripQuotes(String text) {
-    if (text == null) {
-      return null;
-    }
-    if (text.length() >= 2 && text.startsWith("\"") && text.endsWith("\"")) {
-      return text.substring(1, text.length() - 1);
-    }
-    return text;
   }
 
   /**

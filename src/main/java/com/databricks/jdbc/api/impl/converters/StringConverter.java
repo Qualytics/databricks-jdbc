@@ -56,14 +56,11 @@ public class StringConverter implements ObjectConverter {
       }
       return convertJavaArrayToString(arrayData);
     } catch (SQLException e) {
-      throw new DatabricksValidationException("Invalid conversion to String", e);
+      throw new DatabricksValidationException("Invalid Array to String conversion", e);
     }
   }
 
   private String convertStructToString(Struct struct) throws DatabricksSQLException {
-    if (struct instanceof DatabricksStruct) {
-      return struct.toString();
-    }
     try {
       Object[] attributes = struct.getAttributes();
       if (attributes == null) {
@@ -79,20 +76,25 @@ public class StringConverter implements ObjectConverter {
       sb.append("}");
       return sb.toString();
     } catch (SQLException e) {
-      throw new DatabricksValidationException("Invalid conversion to String", e);
+      throw new DatabricksValidationException("Invalid Struct to String conversion", e);
     }
   }
 
   private String convertMapToString(Map<?, ?> map) throws DatabricksSQLException {
     StringBuilder sb = new StringBuilder("{");
     Iterator<? extends Map.Entry<?, ?>> iterator = map.entrySet().iterator();
+    int index = 0;
     while (iterator.hasNext()) {
-      Map.Entry<?, ?> entry = iterator.next();
-      sb.append(convertValueToString(entry.getKey()))
-          .append(":")
-          .append(convertValueToString(entry.getValue()));
-      if (iterator.hasNext()) {
+      if (index++ > 0) {
         sb.append(",");
+      }
+      Map.Entry<?, ?> entry = iterator.next();
+      if (entry == null) {
+        sb.append("null:null");
+      } else {
+        sb.append(convertValueToString(entry.getKey()))
+            .append(":")
+            .append(convertValueToString(entry.getValue()));
       }
     }
     sb.append("}");
@@ -100,6 +102,9 @@ public class StringConverter implements ObjectConverter {
   }
 
   private String convertCollectionToString(Collection<?> collection) throws DatabricksSQLException {
+    if (collection == null) {
+      return "null";
+    }
     StringBuilder sb = new StringBuilder("[");
     Iterator<?> iterator = collection.iterator();
     int index = 0;

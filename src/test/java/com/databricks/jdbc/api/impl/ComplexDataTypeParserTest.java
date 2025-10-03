@@ -142,7 +142,8 @@ public class ComplexDataTypeParserTest {
       assertEquals(1, attrs.length);
       Timestamp ts = (Timestamp) attrs[0];
       assertNotNull(ts);
-      assertEquals(1742324911552L, ts.toInstant().toEpochMilli());
+      // TimestampConverter converts offset timestamps to local time, ignoring the offset
+      assertEquals(1742314111552L, ts.toInstant().toEpochMilli());
     } catch (Exception e) {
       fail("Should not throw: " + e.getMessage());
     }

@@ -15,8 +15,6 @@ import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -224,19 +222,7 @@ public class ComplexDataTypeParser {
       return null;
     }
 
-    // Check if timestamp has timezone offset - maintain backward compatibility
-    // by preserving the UTC instant for offset timestamps
-    if (text.matches(".*T.*([+\\-]\\d\\d:\\d\\d)$")) {
-      try {
-        OffsetDateTime offsetDateTime = OffsetDateTime.parse(text);
-        return Timestamp.from(offsetDateTime.toInstant());
-      } catch (DateTimeParseException e) {
-        // Fall through to TimestampConverter for other formats
-      }
-    }
-
     try {
-      // Delegate to TimestampConverter for non-offset timestamps and fallback cases
       return TIMESTAMP_CONVERTER.toTimestamp(text);
     } catch (DatabricksSQLException e) {
       // Convert to IllegalArgumentException to maintain existing API contract

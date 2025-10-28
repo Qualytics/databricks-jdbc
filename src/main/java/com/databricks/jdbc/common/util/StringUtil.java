@@ -69,4 +69,58 @@ public class StringUtil {
     // We need to escape '' to prevent SQL injection
     return escapeStringLiteral(String.format("/Volumes/%s/%s/%s/", catalog, schema, volume));
   }
+
+  /**
+   * Escape special characters in a string for use within JSON string values. Handles quotes,
+   * backslashes, newlines, tabs, and other control characters.
+   *
+   * @param str the string to escape
+   * @return the escaped string, or null if input is null
+   */
+  public static String escapeString(String str) {
+    if (str == null) {
+      return null;
+    }
+    StringBuilder sb = new StringBuilder(str.length() + 16);
+    for (int i = 0; i < str.length(); i++) {
+      char c = str.charAt(i);
+      switch (c) {
+        case '"':
+          sb.append("\\\"");
+          break;
+        case '\\':
+          sb.append("\\\\");
+          break;
+        case '\b':
+          sb.append("\\b");
+          break;
+        case '\f':
+          sb.append("\\f");
+          break;
+        case '\n':
+          sb.append("\\n");
+          break;
+        case '\r':
+          sb.append("\\r");
+          break;
+        case '\t':
+          sb.append("\\t");
+          break;
+        default:
+          // Control characters (0x00-0x1F) need to be escaped as unicode escapes
+          if (c < 0x20) {
+            String hex = Integer.toHexString(c);
+            sb.append("\\u");
+            // Pad with zeros to make it 4 digits
+            for (int j = hex.length(); j < 4; j++) {
+              sb.append('0');
+            }
+            sb.append(hex);
+          } else {
+            sb.append(c);
+          }
+      }
+    }
+    return sb.toString();
+  }
 }

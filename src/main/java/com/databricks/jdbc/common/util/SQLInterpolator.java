@@ -27,6 +27,12 @@ public class SQLInterpolator {
         || object.type() == ColumnInfoTypeName.DATE) {
       // Timestamp and Date types need to be quoted as strings
       return "'" + object.value().toString() + "'";
+    } else if (object.type() == ColumnInfoTypeName.ARRAY
+        || object.type() == ColumnInfoTypeName.STRUCT
+        || object.type() == ColumnInfoTypeName.MAP) {
+      // Complex types (Array/Struct/Map) are serialized as JSON and need to be quoted as strings
+      // The toString() produces JSON format, and we need to escape apostrophes for SQL
+      return "'" + escapeApostrophes(object.value().toString()) + "'";
     } else {
       return object.value().toString();
     }

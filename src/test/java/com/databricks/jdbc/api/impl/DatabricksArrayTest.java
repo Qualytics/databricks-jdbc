@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import com.databricks.jdbc.exception.DatabricksDriverException;
 import com.databricks.jdbc.exception.DatabricksSQLFeatureNotSupportedException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.SQLException;
@@ -20,6 +21,7 @@ import org.mockito.Mockito;
 public class DatabricksArrayTest {
 
   private MockedStatic<MetadataParser> metadataParserMock;
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   @BeforeEach
   public void setUp() {
@@ -40,6 +42,15 @@ public class DatabricksArrayTest {
     metadataParserMock
         .when(() -> MetadataParser.parseStructMetadata(structMetadata))
         .thenReturn(returnType);
+  }
+
+  /** Helper method to assert that a string is valid JSON */
+  private void assertValidJson(String jsonString) {
+    try {
+      objectMapper.readTree(jsonString);
+    } catch (Exception e) {
+      fail("String is not valid JSON: " + jsonString + "\nError: " + e.getMessage());
+    }
   }
 
   /** Test the constructor with a valid list of simple STRING elements. */
@@ -791,6 +802,7 @@ public class DatabricksArrayTest {
         expected,
         actual,
         "DatabricksArray.toString() should produce a JSON-like array with quoted string elements");
+    assertValidJson(actual);
 
     // Verify that parseArrayMetadata was called once for this metadata
     metadataParserMock.verify(() -> MetadataParser.parseArrayMetadata("ARRAY<STRING>"), times(1));
@@ -831,6 +843,7 @@ public class DatabricksArrayTest {
         expected,
         actual,
         "DatabricksArray.toString() should produce a JSON-like array of struct elements");
+    assertValidJson(actual);
   }
 
   @Test
@@ -862,6 +875,7 @@ public class DatabricksArrayTest {
         expected,
         actual,
         "DatabricksArray.toString() should produce a JSON-like array of map elements with string keys quoted and int values unquoted");
+    assertValidJson(actual);
   }
 
   @Test
@@ -880,6 +894,7 @@ public class DatabricksArrayTest {
 
     String expected = "[\"2024-01-01 12:30:45.123\",\"2024-02-15 08:15:30.456\"]";
     assertEquals(expected, actual, "DatabricksArray.toString() should quote timestamp elements");
+    assertValidJson(actual);
   }
 
   @Test
@@ -898,6 +913,7 @@ public class DatabricksArrayTest {
 
     String expected = "[\"2024-01-01\",\"2024-02-15\"]";
     assertEquals(expected, actual, "DatabricksArray.toString() should quote date elements");
+    assertValidJson(actual);
   }
 
   @Test
@@ -940,5 +956,30 @@ public class DatabricksArrayTest {
         "[{\"id\":1,\"created_at\":\"2024-01-01 12:30:45.123\"},{\"id\":2,\"created_at\":\"2024-02-15 08:15:30.456\"}]";
     assertEquals(
         expected, actual, "Nested structures should properly quote timestamps at all levels");
+    assertValidJson(actual);
+  }
+
+  @Test
+  public void testToStringWithStringsContainingSpecialCharacters() throws SQLException {
+    // Test that strings with quotes, backslashes, and other special characters produce valid JSON
+    String str1 = "hello\"world"; // contains quote
+    String str2 = "path\\to\\file"; // contains backslashes
+    String str3 = "line1\nline2"; // contains newline
+    String str4 = "tab\there"; // contains tab
+
+    String metadata = "ARRAY<STRING>";
+    metadataParserMock
+        .when(() -> MetadataParser.parseArrayMetadata("ARRAY<STRING>"))
+        .thenReturn("STRING");
+
+    DatabricksArray array = new DatabricksArray(List.of(str1, str2, str3, str4), metadata);
+    String actual = array.toString();
+
+    // The most important assertion: the output must be valid JSON
+    assertValidJson(actual);
+
+    // Additionally verify the strings are properly quoted
+    assertTrue(actual.startsWith("[\""), "Array should start with opening bracket and quote");
+    assertTrue(actual.endsWith("\"]"), "Array should end with quote and closing bracket");
   }
 }

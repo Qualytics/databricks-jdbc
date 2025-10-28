@@ -1,6 +1,7 @@
 package com.databricks.jdbc.api.impl;
 
 import com.databricks.jdbc.common.util.DatabricksTypeUtil;
+import com.databricks.jdbc.common.util.StringUtil;
 import com.databricks.jdbc.exception.DatabricksDriverException;
 import com.databricks.jdbc.log.JdbcLogger;
 import com.databricks.jdbc.log.JdbcLoggerFactory;
@@ -194,8 +195,11 @@ public class DatabricksStruct implements Struct {
       } else if (val instanceof JsonNode) {
         // VARIANT fields represented as JsonNode - preserve JSON structure without quotes
         sb.append(val.toString());
-      } else if (val instanceof String || DatabricksTypeUtil.isTemporalType(val)) {
-        // Strings and temporal types get quoted
+      } else if (val instanceof String) {
+        // Strings need to be quoted and escaped for JSON
+        sb.append("\"").append(StringUtil.escapeString((String) val)).append("\"");
+      } else if (DatabricksTypeUtil.isTemporalType(val)) {
+        // Temporal types get quoted (but don't need escaping as they're in standard format)
         sb.append("\"").append(val.toString()).append("\"");
       } else {
         // For non-string values, rely on their existing toString()

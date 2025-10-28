@@ -21,6 +21,7 @@ import org.mockito.Mockito;
 public class DatabricksStructTest {
 
   private MockedStatic<MetadataParser> metadataParserMock;
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   @BeforeEach
   public void setUp() {
@@ -32,6 +33,15 @@ public class DatabricksStructTest {
   public void tearDown() {
     // Close the MockedStatic context after each test
     metadataParserMock.close();
+  }
+
+  /** Helper method to assert that a string is valid JSON */
+  private void assertValidJson(String jsonString) {
+    try {
+      objectMapper.readTree(jsonString);
+    } catch (Exception e) {
+      fail("String is not valid JSON: " + jsonString + "\nError: " + e.getMessage());
+    }
   }
 
   /**
@@ -768,6 +778,7 @@ public class DatabricksStructTest {
         expected,
         actual,
         "Struct toString() must produce JSON-like output with int unquoted and string quoted");
+    assertValidJson(actual);
   }
 
   @Test
@@ -811,6 +822,7 @@ public class DatabricksStructTest {
         expected,
         actual,
         "Struct toString() must produce JSON-like output with int unquoted, array of quoted strings, and map with string keys/ int values");
+    assertValidJson(actual);
   }
 
   /**
@@ -949,6 +961,7 @@ public class DatabricksStructTest {
 
     String expected = "{\"id\":123,\"created_at\":\"2024-01-01 12:30:45.123\"}";
     assertEquals(expected, actual, "DatabricksStruct.toString() should quote timestamp fields");
+    assertValidJson(actual);
   }
 
   @Test
@@ -974,5 +987,36 @@ public class DatabricksStructTest {
 
     String expected = "{\"id\":456,\"event_date\":\"2024-01-01\"}";
     assertEquals(expected, actual, "DatabricksStruct.toString() should quote date fields");
+    assertValidJson(actual);
+  }
+
+  @Test
+  public void testToStringWithStringsContainingSpecialCharacters() throws SQLException {
+    // Test that strings with quotes, backslashes, and other special characters produce valid JSON
+    String metadata = "STRUCT<id:INT,message:STRING,path:STRING>";
+
+    Map<String, Object> fieldTypesMap = new LinkedHashMap<>();
+    fieldTypesMap.put("id", "INT");
+    fieldTypesMap.put("message", "STRING");
+    fieldTypesMap.put("path", "STRING");
+
+    metadataParserMock
+        .when(() -> MetadataParser.parseStructMetadata(metadata))
+        .thenReturn(fieldTypesMap);
+
+    Map<String, Object> inputMap = new LinkedHashMap<>();
+    inputMap.put("id", 1);
+    inputMap.put("message", "She said \"hello\""); // contains quotes
+    inputMap.put("path", "C:\\Users\\file.txt"); // contains backslashes
+
+    DatabricksStruct struct = new DatabricksStruct(inputMap, metadata);
+    String actual = struct.toString();
+
+    // The most important assertion: the output must be valid JSON
+    assertValidJson(actual);
+
+    // Additionally verify the struct format
+    assertTrue(actual.startsWith("{\""), "Struct should start with opening brace and quote");
+    assertTrue(actual.endsWith("}"), "Struct should end with closing brace");
   }
 }

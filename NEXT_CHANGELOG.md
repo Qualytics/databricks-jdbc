@@ -5,10 +5,11 @@
 ### Added
 - Added support for geospatial data types.
 * Added support for telemetry log levels, which can be controlled via the connection parameter `TelemetryLogLevel`. This allows users to configure the verbosity of telemetry logging from OFF to TRACE.
+- Added full support for JDBC transaction control methods in Databricks. Transaction support in Databricks is currently available as a Private Preview. The `IgnoreTransactions` connection parameter can be set to `1` to disable or no-op transaction control methods.
 - Added support for more performant batched writes with parameter interpolation; controlled via `supportManyParameters=1`, `EnableBatchedInserts=1`, `BatchInsertSize=<BATCHSIZE>`.
 
 ### Updated
-* Updated sdk version from 0.65.0 to 0.67.3
+- Updated sdk version from 0.65.0 to 0.67.3
 
 ### Fixed
 - Fixed SQL syntax error when LIKE queries contain empty ESCAPE clauses.

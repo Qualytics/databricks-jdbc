@@ -47,7 +47,7 @@
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
     <mockito.version>5.2.0</mockito.version>
-    <jackson.version>2.18.3</jackson.version>
+    <jackson.version>2.18.6</jackson.version>
     <log4j.version>2.22.1</log4j.version>
     <slf4j.version>2.0.13</slf4j.version>
     <google.guava.version>33.0.0-jre</google.guava.version>
